@@ -25,3 +25,15 @@ Controller: sticks, RT schieten, A dash, X gebruiken, Y vaardigheid, Start doorg
 
 ## Multiplayer
 Host klikt *Host spel* en deelt de 5-letterige code; vrienden vullen die in bij *Deelnemen* (PeerJS/WebRTC). De host bewaart de verhaalvoortgang; ontgrendelde hoofdstukken zijn in de lobby te kiezen. Gedeelde continues (3 per hoofdstuk) en gedeeld wapenniveau.
+
+## 3D-modellen (`models/`)
+Geoptimaliseerd met gltf-transform (WebP-textures, meshopt) — van ~118 MB naar ~14 MB.
+- `zaadschip.glb` — het zaadschip (proloog)
+- `kolonieschip.glb` — kolonieschip (menu, aarde-scène)
+- `aethari_schip.glb` — Aethari-schip (menu, Aethari-scènes, finale)
+- `aethari.glb` — Aethari op zwevende rots (tussenfilmpjes)
+- `aarde.glb` — de Aarde met schild (menu, tussenfilmpjes)
+- `tank_rood.glb`, `tank_vege.glb` — tanks in Arcadia en het Congresgebouw (sprites in 32 richtingen)
+- `kragg.glb` — Generaal Kragg (geanimeerd, sprites in 32 richtingen × 6 frames)
+
+De game werkt ook zonder modellen (valt terug op getekende vormen).
