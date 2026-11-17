@@ -32,7 +32,8 @@ Geoptimaliseerd met gltf-transform (WebP-textures, meshopt) — van ~118 MB naar
 - `kolonieschip.glb` — kolonieschip (menu, aarde-scène)
 - `aethari_schip.glb` — Aethari-schip (menu, Aethari-scènes, finale)
 - `aethari.glb` — Aethari op zwevende rots (tussenfilmpjes)
-- `aarde.glb` — de Aarde met schild (menu, tussenfilmpjes)
+- `aarde.glb` — de Aarde (menu, tussenfilmpjes)
+- `schild.glb` — het ondoordringbare schild (Dyson-bol, gloeiend blauw energiemateriaal + energieveld) met de Aarde erin
 - `tank_rood.glb`, `tank_vege.glb` — tanks in Arcadia en het Congresgebouw (sprites in 32 richtingen)
 - `kragg.glb` — Generaal Kragg (geanimeerd, sprites in 32 richtingen × 6 frames)
 

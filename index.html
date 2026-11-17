@@ -94,15 +94,17 @@ import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GL
 const BS=1024,R=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});R.setPixelRatio(1);R.setSize(BS,BS,false);R.outputColorSpace=THREE.SRGBColorSpace;R.setScissorTest(true);R.setClearColor(0x000000,0);
 const scene=new THREE.Scene();scene.add(new THREE.HemisphereLight(0xdde8ff,0x223344,2.1));const sun=new THREE.DirectionalLight(0xffffff,2.8);sun.position.set(-2,4,3);scene.add(sun);const rim=new THREE.DirectionalLight(0x9fb8ff,1.4);rim.position.set(3,1.5,-3);scene.add(rim);
 const DEF={tank_rood:{front:1,frames:2,dirs:32,cell:160},tank_vege:{front:-1,frames:2,dirs:32,cell:160},kragg:{front:1,frames:6,dirs:32,cell:192},
- zaadschip:{},kolonieschip:{},aethari_schip:{},aethari:{},aarde:{}};
+ zaadschip:{},kolonieschip:{},aethari_schip:{},aethari:{},aarde:{},schild:{}};
 const M={},ATL={};let loaded=0;const total=Object.keys(DEF).length;
 const API={ok:false,loaded:0,total,atlas:ATL,models:M,
  sprite(n,a,t){const A=ATL[n];if(!A)return null;const d=((Math.round(((a%(Math.PI*2))+Math.PI*2)/(Math.PI*2)*A.dirs))%A.dirs),f=Math.floor((t||0)*A.fps)%A.frames,i=d*A.frames+f;
   return{img:A.cv,sx:(i%A.cols)*A.cell,sy:Math.floor(i/A.cols)*A.cell,s:A.cell}},
  view(n,w,h,o={}){const m=M[n];if(!m)return null;const k=Math.min(1,BS/w,BS/h);w=Math.max(8,Math.floor(w*k));h=Math.max(8,Math.floor(h*k));
   show(n);m.outer.rotation.set(o.pitchM||0,o.yaw||0,o.roll||0);if(m.mixer)m.mixer.setTime((o.t||0)%m.dur);
+  const ex=(o.extra||[]).filter(x=>M[x.n]);for(const x of ex){const q=M[x.n];q.outer.visible=true;q.outer.scale.setScalar(x.s||1);q.outer.rotation.set(0,x.yaw||0,0);if(q.mixer)q.mixer.setTime((x.t||0)%q.dur)}
+  if(m.field){const k=.75+.25*Math.sin((o.t||0)*2.2);m.field.material.uniforms.k.value=k;m.lat.forEach(mt=>mt.emissiveIntensity=1.2+.7*k)}
   const cam=new THREE.PerspectiveCamera(o.fov||30,w/h,.01,100),p=o.pitch==null?.35:o.pitch,d=o.dist||2.3;cam.position.set(0,Math.sin(p)*d,Math.cos(p)*d);cam.lookAt(0,o.ly||0,0);
-  R.setViewport(0,0,w,h);R.setScissor(0,0,w,h);R.clear();R.render(scene,cam);return{img:R.domElement,sx:0,sy:BS-h,w,h}}};
+  R.setViewport(0,0,w,h);R.setScissor(0,0,w,h);R.clear();R.render(scene,cam);for(const x of ex){M[x.n].outer.scale.setScalar(1);M[x.n].outer.visible=false}return{img:R.domElement,sx:0,sy:BS-h,w,h}}};
 window.M3D=API;
 function show(n){for(const k in M)M[k].outer.visible=k===n}
 function norm(root){const box=new THREE.Box3().setFromObject(root),s=box.getSize(new THREE.Vector3()),c=box.getCenter(new THREE.Vector3());root.position.sub(c);const outer=new THREE.Group(),piv=new THREE.Group();piv.add(root);piv.scale.setScalar(1/Math.max(s.x,s.y,s.z));outer.add(piv);return outer}
@@ -113,7 +115,12 @@ function bake(n){const d=DEF[n],m=M[n],cell=d.cell,cols=16,cnt=d.dirs*d.frames,c
  ATL[n]={cv,cell,cols,dirs:d.dirs,frames:d.frames,fps:d.frames/Math.max(.5,m.dur||1)}}
 const L=new GLTFLoader();L.setMeshoptDecoder(MeshoptDecoder);
 for(const n of Object.keys(DEF))L.loadAsync('models/'+n+'.glb').then(g=>{const r=g.scene;r.traverse(o=>{if(o.isMesh&&/collid/i.test(o.name))o.visible=false;if(o.isMesh)o.frustumCulled=false});
-  const outer=norm(r);scene.add(outer);const m=M[n]={outer,dur:1};if(g.animations.length){m.mixer=new THREE.AnimationMixer(r);g.animations.forEach(c=>m.mixer.clipAction(c).play());m.dur=g.animations[0].duration||1}
+  const outer=norm(r);scene.add(outer);const m=M[n]={outer,dur:1};
+  if(n==='schild'){m.lat=[];r.traverse(o=>{if(o.isMesh){const mt=new THREE.MeshStandardMaterial({color:0x06183f,emissive:0x1a62ff,emissiveIntensity:1.6,metalness:.3,roughness:.4});o.material=mt;m.lat.push(mt)}});
+   const fm=new THREE.ShaderMaterial({uniforms:{k:{value:1}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
+    vertexShader:'varying vec3 vN;varying vec3 vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
+    fragmentShader:'uniform float k;varying vec3 vN;varying vec3 vV;void main(){float f=pow(1.-abs(dot(vN,vV)),2.2);gl_FragColor=vec4(vec3(.12,.4,1.)*(f*1.2+.05)*k,1.);}'});
+   m.field=new THREE.Mesh(new THREE.SphereGeometry(.485,64,48),fm);outer.add(m.field)}if(g.animations.length){m.mixer=new THREE.AnimationMixer(r);g.animations.forEach(c=>m.mixer.clipAction(c).play());m.dur=g.animations[0].duration||1}
   if(DEF[n].dirs)bake(n);outer.visible=false}).catch(e=>console.warn('model',n,e)).finally(()=>{API.loaded=++loaded;if(loaded===total)API.ok=true});
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -597,8 +604,12 @@ function render(dt){RT+=dt;cx.setTransform(1,0,0,1,0,0);
  if(S.mode==='cut'){drawCut();return}
  if(S.mode==='end'){drawEnd(dt);return}
  drawWorld(dt);drawHUD();if(S.mode==='over')drawOver()}
-function drawMenuBg(){cx.fillStyle='#03060d';cx.fillRect(0,0,W,H);drawStars(RT,8);drawEarth(W*.78,H*.72,Math.min(W,H)*.34,true);v3('kolonieschip',W*.14,H*.2,W*.3,H*.26,{yaw:RT*.08,pitch:.45,dist:1.8});v3('aethari_schip',W*.16,H*.78+Math.sin(RT)*8,W*.26,H*.3,{yaw:-RT*.2,pitch:.35,dist:2})}
-function drawEarth(x,y,r,shield){if(v3('aarde',x,y,r*2.3,r*2.3,{pitch:.2,dist:2.14,t:RT,yaw:.4})){if(shield)drawShield(x,y,r);return}const g=cx.createRadialGradient(x-r*.35,y-r*.35,r*.1,x,y,r);g.addColorStop(0,'#5fb0ff');g.addColorStop(.55,'#1f5fb0');g.addColorStop(1,'#061a3a');cx.fillStyle=g;cx.beginPath();cx.arc(x,y,r,0,TAU);cx.fill();
+function drawMenuBg(){cx.fillStyle='#03060d';cx.fillRect(0,0,W,H);drawStars(RT,8);drawEarth(W*.8,H*.62,Math.min(W,H)*.2,true);v3('kolonieschip',W*.14,H*.2,W*.3,H*.26,{yaw:RT*.08,pitch:.45,dist:1.8});v3('aethari_schip',W*.16,H*.78+Math.sin(RT)*8,W*.26,H*.3,{yaw:-RT*.2,pitch:.35,dist:2})}
+function drawEarth(x,y,r,shield){const M=window.M3D;
+ if(shield&&M&&M.models.schild&&M.models.aarde){const R2=r/.62,sz=R2*2.3;const g=cx.createRadialGradient(x,y,R2*.6,x,y,R2*1.35);g.addColorStop(0,'rgba(30,90,255,.22)');g.addColorStop(1,'rgba(30,90,255,0)');cx.fillStyle=g;cx.beginPath();cx.arc(x,y,R2*1.4,0,TAU);cx.fill();
+  const v=M.view('schild',sz,sz,{yaw:RT*.08,pitch:.2,dist:2.14,t:RT,extra:[{n:'aarde',s:.62,t:RT,yaw:.4-RT*.08}]});
+  if(v){cx.drawImage(v.img,v.sx,v.sy,v.w,v.h,x-sz/2,y-sz/2,sz,sz);cx.save();cx.globalCompositeOperation='lighter';cx.filter='blur('+Math.max(3,R2*.035|0)+'px)';cx.globalAlpha=.4;cx.drawImage(v.img,v.sx,v.sy,v.w,v.h,x-sz/2,y-sz/2,sz,sz);cx.restore();return}}
+ if(v3('aarde',x,y,r*2.3,r*2.3,{pitch:.2,dist:2.14,t:RT,yaw:.4})){if(shield)drawShield(x,y,r);return}const g=cx.createRadialGradient(x-r*.35,y-r*.35,r*.1,x,y,r);g.addColorStop(0,'#5fb0ff');g.addColorStop(.55,'#1f5fb0');g.addColorStop(1,'#061a3a');cx.fillStyle=g;cx.beginPath();cx.arc(x,y,r,0,TAU);cx.fill();
  cx.save();cx.beginPath();cx.arc(x,y,r,0,TAU);cx.clip();cx.fillStyle='rgba(70,160,80,.75)';for(let k=0;k<7;k++){const a=k*1.7+RT*.02;cx.beginPath();cx.ellipse(x+Math.cos(a)*r*.5,y+Math.sin(a*1.3)*r*.4,r*.22,r*.13,a,0,TAU);cx.fill()}
  cx.fillStyle='rgba(255,255,255,.25)';for(let k=0;k<6;k++){cx.beginPath();cx.ellipse(x+Math.cos(k*2.1+RT*.05)*r*.6,y+Math.sin(k*1.4)*r*.55,r*.3,r*.05,k,0,TAU);cx.fill()}cx.restore();
  if(shield)drawShield(x,y,r)}
@@ -799,7 +810,7 @@ function drawScene(sc){const t=RT;
   cx.fillStyle='rgba(195,139,255,.08)';for(let k=0;k<5;k++){cx.beginPath();cx.arc(W/2,H*.35,80+k*60+Math.sin(t+k)*10,0,TAU);cx.fill()}
   v3('aethari_schip',W*.78,H*.22+Math.sin(t*.8)*8,W*.34,H*.3,{yaw:t*.25,pitch:.35,dist:2});const s=Math.min(W,H)*.09;silhouette(W*.24,H*.6,s,'#c38bff',true);silhouette(W*.76,H*.62,s,'#c38bff',true);
   if(!v3('aethari',W*.5,H*.42,H*.62,H*.62,{yaw:t*.15,pitch:.18,dist:1.7,t,ly:.08}))silhouette(W*.5,H*.52,s*1.15,'#e0c0ff',true)}
- else if(sc==='earth'){drawStars(t,4);drawEarth(W*.62,H*.48,Math.min(W,H)*.3,true);cx.fillStyle='#8899aa';cx.fillRect(W*.62-30,H*.48-Math.min(W,H)*.3*1.45,60,14);cx.strokeStyle='#9cf';cx.lineWidth=1;cx.beginPath();cx.moveTo(W*.62,H*.48-Math.min(W,H)*.3*1.42);cx.lineTo(W*.62,H*.48-Math.min(W,H)*.3);cx.stroke();
+ else if(sc==='earth'){drawStars(t,4);drawEarth(W*.62,H*.42,Math.min(W,H)*.2,true);cx.fillStyle='#8899aa';cx.fillRect(W*.62-30,H*.42-Math.min(W,H)*.2*1.78,60,14);cx.strokeStyle='#9cf';cx.lineWidth=1;cx.beginPath();cx.moveTo(W*.62,H*.42-Math.min(W,H)*.2*1.75);cx.lineTo(W*.62,H*.42-Math.min(W,H)*.2);cx.stroke();
   if(!v3('kolonieschip',W*.24,H*.32,W*.42,H*.36,{yaw:Math.PI*.62+Math.sin(t*.1)*.08,pitch:.4,dist:1.7,roll:-.1})){cx.save();cx.translate(W*.2,H*.3);cx.fillStyle='#3a4458';cx.fillRect(-60,-10,120,20);cx.restore()}}
  else if(sc==='lift'){const g=cx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#000');g.addColorStop(1,'#123a6a');cx.fillStyle=g;cx.fillRect(0,0,W,H);drawStars(t,0,500);
   cx.strokeStyle='#9fd0ff';cx.lineWidth=4;glow('#9cf',14);cx.beginPath();cx.moveTo(W/2,0);cx.lineTo(W/2,H);cx.stroke();noGlow();
